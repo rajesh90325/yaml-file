@@ -1,0 +1,61 @@
+- name: Setup Java, Tomcat, Git, and Maven
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Java
+      apt:
+        name: openjdk-17-jdk  # Use the available version
+        state: present
+
+
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+
+    - name: Install Maven
+      apt:
+        name: maven
+        state: present
+
+    - name: Download Tomcat
+      get_url:
+        url: https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.80/bin/apache-tomcat-9.0.80.tar.gz
+        dest: /tmp/apache-tomcat.tar.gz
+
+    - name: Extract Tomcat
+      unarchive:
+        src: /tmp/apache-tomcat.tar.gz
+        dest: /opt/
+        remote_src: true
+        creates: /opt/apache-tomcat-9.0.80
+
+    - name: Create symbolic link for Tomcat
+      file:
+        src: /opt/apache-tomcat-9.0.80
+        dest: /opt/tomcat
+        state: link
+    - name: Remove existing petclinic directory
+      file:
+        path: /home/ubuntu/petclinic
+        state: absent
+    - name: Clone Git repository
+      git:
+        repo: 'https://github.com/jaiswaladi246/Petclinic.git'
+        dest: /home/ubuntu/petclinic
+        version: main
+
+    - name: Run Maven package
+      command: mvn package
+      args:
+        chdir: /home/ubuntu/petclinic
+
+    - name: Move WAR file to Tomcat webapps
+      copy:
+        src: /home/ubuntu/petclinic/target/petclinic.war
+        dest: /opt/tomcat/webapps/
+        remote_src: yes
+    - name: Start Tomcat server
+      command: /opt/tomcat/bin/startup.sh
+
+
